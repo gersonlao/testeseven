@@ -1,0 +1,105 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Usuario {
+  id           String    @id @default(uuid())
+  nome         String
+  email        String    @unique
+  senha        String
+  role         Role
+  prioridade   Boolean  @default(false)
+  ativo        Boolean   @default(true)
+  criadoEm     DateTime  @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  cliente     Cliente?
+  especialista Especialista?
+  agendamentosAgendados Agendamento[] @relation("AgendadoPor")
+  logsAuditoria  LogAuditoria[]
+}
+
+model Cliente {
+  id        String   @id @default(uuid())
+  usuarioId String   @unique
+  telefone  String
+  cpf       String
+  criadoEm  DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id])
+  agendamentos Agendamento[]
+}
+
+model Especialista {
+  id                 String   @id @default(uuid())
+  usuarioId          String   @unique
+  especialidade      String
+  limiteDiario       Int
+  intervaloMinimo    Int
+  disponibilidade     Json
+  criadoEm           DateTime @default(now())
+  atualizadoEm       DateTime @updatedAt
+
+  usuario         Usuario    @relation(fields: [usuarioId], references: [id])
+  agendamentos    Agendamento[]
+}
+
+model Agendamento {
+  id                String      @id @default(uuid())
+  clienteId         String
+  especialistaId    String
+  agendadoPorId     String
+  data              DateTime
+  horario           String
+  status            StatusAgendamento
+  reagendadoDeId   String?     @unique
+  criadoEm          DateTime    @default(now())
+  atualizadoEm      DateTime    @updatedAt
+
+  cliente         Cliente     @relation(fields: [clienteId], references: [id])
+  especialista    Especialista @relation(fields: [especialistaId], references: [id])
+  agendadoPor     Usuario     @relation("AgendadoPor", fields: [agendadoPorId], references: [id])
+  reagendadoDe    Agendamento? @relation("Reagendado", fields: [reagendadoDeId], references: [id])
+  reagendadoPara  Agendamento? @relation("Reagendado")
+}
+
+model LogAuditoria {
+  id        String   @id @default(uuid())
+  usuarioId String
+  tipoAcao  AcaoAuditoria
+  entidade  String
+  entidadeId String
+  mensagem  String
+  criadoEm  DateTime @default(now())
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id])
+}
+
+enum Role {
+  cliente
+  especialista
+  agendador
+  administrador
+}
+
+enum StatusAgendamento {
+  pendente
+  confirmado
+  cancelado
+  finalizado
+  reagendado
+  expirado
+}
+
+enum AcaoAuditoria {
+  criar
+  reagendar
+  cancelar
+  erro_validacao
+}
